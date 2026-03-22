@@ -234,11 +234,28 @@ def process_daily_earnings():
     print(f'{"="*50}\n')
 
 
+def send_withdraw_notification():
+    """14th and 28th of every month — withdrawal window notification"""
+    print('Sending withdrawal window notifications...')
+    try:
+        accs = supabase.table('investment_accounts').select('user_id').eq('status', 'active').execute()
+        for acc in (accs.data or []):
+            notify(
+                acc['user_id'],
+                '📅 Echo World — Withdrawal Window Open',
+                '✅ Today is withdrawal day! You can withdraw your earnings now. Go to Invest → Withdraw.'
+            )
+        print(f'  ✅ Sent to {len(accs.data or [])} users')
+    except Exception as e:
+        print(f'Withdraw notification error: {e}')
+
 def main():
     print('Echo World Auto Earning System starting...')
     print(f'BD Time: {datetime.now(BD_TZ).strftime("%Y-%m-%d %H:%M:%S")}')
 
     scheduler = BlockingScheduler(timezone='Asia/Dhaka')
+
+    # Daily earning — রাত ১২:০১ AM
     scheduler.add_job(
         process_daily_earnings,
         'cron',
@@ -246,7 +263,19 @@ def main():
         minute=1,
         id='daily_earning',
     )
+
+    # Withdrawal notification — 14th and 28th at 8 AM BD time
+    scheduler.add_job(
+        send_withdraw_notification,
+        'cron',
+        day='14,28',
+        hour=8,
+        minute=0,
+        id='withdraw_notification',
+    )
+
     print('✅ Scheduler ready — প্রতিদিন রাত ১২:০১ AM (BD) এ চলবে')
+    print('✅ Withdrawal notification — 14th & 28th at 8 AM (BD)')
 
     try:
         scheduler.start()
